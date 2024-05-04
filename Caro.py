@@ -293,7 +293,7 @@ def is_win():
 # Graphics Engine
 def click(x, y):
     global Win, Number_move, Board, Move_history, Colors
-    print(round(x), round(y))
+    # print(round(x), round(y))
 
     if abs(x - round(x)) > 0.4 or abs(y - round(y)) > 0.4 or Win != 0:
         return
@@ -329,7 +329,7 @@ def init():
     screen = turtle.Screen()
     screen.title("Caro Game")
     screen.bgcolor("orange")
-    # screen.setup(0.5, 0.75)
+    screen.setup(0.5, 0.75)
     # print(screen.screensize())
     # > (400, 300) ???
     screen.onclick(click)
