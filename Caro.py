@@ -1,219 +1,130 @@
-# AI chơi cờ Caro - Nhóm 4
+# AI chơi cờ Caro - Nhóm 4 Caro - New
 # IT3160 - Nhập môn trí tuệ nhân tạo
 import turtle
 import random
 
-global move_history
-BOARD_SIZE = 17
-
-
-def is_win(board):
-
-    black = score_of_col(board, "b")
-    white = score_of_col(board, "w")
-
-    sum_sumcol_values(black)
-    sum_sumcol_values(white)
-
-    if 5 in black and black[5] == 1:
-        return "Black won"
-    elif 5 in white and white[5] == 1:
-        return "White won"
-
-    if (
-        sum(black.values()) == black[-1]
-        and sum(white.values()) == white[-1]
-        or possible_moves(board) == []
-    ):
-        return "Draw"
-
-    return "Continue playing"
-
+'''
+Default settings:
+    Player is 'b'
+    AI is 'w'
+'''
+BOARD_SIZE = 15
+WIN = 5
+FIRST_HIT = 0 # 0: Player first | 1: AI first
+PLAYER_COLOR = 'b' # Color of player
+Win = 0 # | 'b' - Player win | 'w' - AI win |
+Number_move = 0
+Board = []
+Move_history = []
+Colors = {}
 
 # AI Engine
-
-def march(board, x, y, dx, dy, length):
+def forward(x, y, dx, dy, len):
     """
     trả về điểm có toạ độ (x2,y2) = (x,y) + length*(dx,dy) nếu điểm đó nằm trong bàn cờ
     , nếu không thì giảm length
     """
-    x2 = x + length*dx
-    y2 = y + length*dy
+    x2 = x + len*dx
+    y2 = y + len*dy
     while not (0 <= x2 < BOARD_SIZE and 0 <= y2 < BOARD_SIZE):
         x2 -= dx
         y2 -= dy
 
-    return x2, y2
+    return (x2, y2)
 
 
-def score_ready(scorecol):
-    """
-    Khởi tạo hệ thống điểm
-    """
-    sumcol = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, -1: {}}
-    for key in scorecol:
-        for score in scorecol[key]:
-            if key in sumcol[score]:
-                sumcol[score][key] += 1
-            else:
-                sumcol[score][key] = 1
-
-    return sumcol
-
-
-def sum_sumcol_values(sumcol):
+def sum_sumcol_values(score_sum):
     """
     hợp nhất điểm của mỗi hướng
     """
-
-    for key in sumcol:
+    for key in score_sum:
         if key == 5:
-            sumcol[5] = int(1 in sumcol[5].values())
+            score_sum[5] = int(1 in score_sum[5].values())
         else:
-            sumcol[key] = sum(sumcol[key].values())
+            score_sum[key] = sum(score_sum[key].values())
 
 
-def score_of_list(lis, col):
-
-    blank = lis.count(" ")
-    filled = lis.count(col)
-
-    if blank + filled < 5:
-        return -1
-    elif blank == 5:
-        return 0
-    else:
-        return filled
-
-
-def row_to_list(board, x, y, dx, dy, xf, yf):
-    """
-    trả về list của x,y từ xf,yf
-
-    """
-    row = []
-    while x != xf + dx or y != yf + dy:
-        row.append(board[x][y])
-        x += dx
-        y += dy
-    return row
-
-
-def score_of_row(board, cordi, dx, dy, cordf, col):
+def score_of_line(begin_point, dx, dy, end_point, bw):
     """
     trả về một list với mỗi phần tử đại diện cho số điểm của 5 khối
-
+    (dx, dy) = vector hướng từ begin_point đến end_point
     """
-    colscores = []
-    x, y = cordi
-    xf, yf = cordf
-    row = row_to_list(board, x, y, dx, dy, xf, yf)
-    for start in range(len(row) - 4):
-        score = score_of_list(row[start : start + 5], col)
-        colscores.append(score)
+    x, y = begin_point
+    xf, yf = end_point
+    # Get line from begin_point to end_point
+    line = []
+    line.append(Board[x][y])
+    while x != xf or y != yf:
+        x += dx
+        y += dy
+        line.append(Board[x][y])
 
-    return colscores
+    line_score = []
+    for i in range(len(line) - (WIN - 1)):
+        blank = line[i : i + WIN].count('')
+        hit = line[i : i + WIN].count(bw)
+        if blank + hit != WIN: # opponent has a hit in this line
+            score = -1
+        else:
+            score = hit
+        line_score.append(score)
+
+    return line_score
 
 
-def score_of_col(board, col):
+def score_all(bw):
     """
-    tính toán điểm số mỗi hướng của column dùng cho is_win;
+    tính toán điểm số mỗi trên toàn bộ các hướng của bw
     """
-
-    f = BOARD_SIZE
+    END = BOARD_SIZE - 1
     # scores của 4 hướng đi
-    scores = {(0, 1): [], (-1, 1): [], (1, 0): [], (1, 1): []}
-    for start in range(BOARD_SIZE):
-        scores[(0, 1)].extend(
-            score_of_row(board, (start, 0), 0, 1, (start, f - 1), col)
-        )
-        scores[(1, 0)].extend(
-            score_of_row(board, (0, start), 1, 0, (f - 1, start), col)
-        )
-        scores[(1, 1)].extend(
-            score_of_row(board, (start, 0), 1, 1, (f - 1, f - 1 - start), col)
-        )
-        scores[(-1, 1)].extend(score_of_row(board, (start, 0), -1, 1, (0, start), col))
+    score = {(1, 0): [], (0, 1): [], (1, 1): [], (-1, 1): []}
+    for i in range(BOARD_SIZE):
+        score[(1, 0)] += score_of_line((0, i), 1, 0, (END, i), bw)
+        score[(0, 1)] += score_of_line((i, 0), 0, 1, (i, END), bw)
 
-        if start + 1 < BOARD_SIZE:
-            scores[(1, 1)].extend(
-                score_of_row(board, (0, start + 1), 1, 1, (f - 2 - start, f - 1), col)
-            )
-            scores[(-1, 1)].extend(
-                score_of_row(board, (f - 1, start + 1), -1, 1, (start + 1, f - 1), col)
-            )
+    score[(1, 1)] += score_of_line((0, 0), 1, 1, (END, END), bw)
+    score[(-1, 1)] += score_of_line((0, END), 1, -1, (END, 0), bw)
+    for i in range(1, BOARD_SIZE - (WIN - 1)):
+        score[(1, 1)] += score_of_line((i, 0), 1, 1, (END, END - i), bw)
+        score[(1, 1)] += score_of_line((0, i), 1, 1, (END - i, END), bw)
+        score[(-1, 1)] += score_of_line((i, END), 1, -1, (END, i), bw)
 
-    return score_ready(scores)
+    for i in range(WIN - 1, BOARD_SIZE):
+        score[(-1, 1)] += score_of_line((i, 0), -1, 1, (0, i), bw)
+    
+    return score_ready(score)
 
 
-def score_of_col_one(board, col, x, y):
+def score_of_col_one(x, y, bw):
     """
     trả lại điểm số của column trong x,y theo 4 hướng,
     key: điểm số khối đơn vị đó -> chỉ ktra 5 khối thay vì toàn bộ
     """
 
     scores = {(0, 1): [], (-1, 1): [], (1, 0): [], (1, 1): []}
-
-    scores[(0, 1)].extend(
-        score_of_row(
-            board, march(board, x, y, 0, -1, 4), 0, 1, march(board, x, y, 0, 1, 4), col
-        )
-    )
-
-    scores[(1, 0)].extend(
-        score_of_row(
-            board, march(board, x, y, -1, 0, 4), 1, 0, march(board, x, y, 1, 0, 4), col
-        )
-    )
-
-    scores[(1, 1)].extend(
-        score_of_row(
-            board, march(board, x, y, -1, -1, 4), 1, 1, march(board, x, y, 1, 1, 4), col
-        )
-    )
-
-    scores[(-1, 1)].extend(
-        score_of_row(
-            board,
-            march(board, x, y, -1, 1, 4),
-            1,
-            -1,
-            march(board, x, y, 1, -1, 4),
-            col,
-        )
-    )
+    
+    scores[(1, 0)] += score_of_line(forward(x, y, -1, 0, 4), 1, 0, forward(x, y, 1, 0, 4), bw)
+    scores[(0, 1)] += score_of_line(forward(x, y, 0, -1, 4), 0, 1, forward(x, y, 0, 1, 4), bw)
+    scores[(1, 1)] += score_of_line(forward(x, y, -1, -1, 4), 1, 1, forward(x, y, 1, 1, 4), bw)
+    scores[(-1, 1)] += score_of_line(forward(x, y, -1, 1, 4), 1, -1, forward(x, y, 1, -1, 4), bw)
 
     return score_ready(scores)
 
 
-def possible_moves(board):
+def score_ready(score_all):
     """
-    khởi tạo danh sách tọa độ có thể có tại danh giới các nơi đã đánh phạm vi 3 đơn vị
+    Khởi tạo hệ thống điểm
     """
-    # mảng taken lưu giá trị của người chơi và của máy trên bàn cờ
-    taken = []
-    # mảng directions lưu hướng đi (8 hướng)
-    directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (-1, -1), (-1, 1), (1, -1)]
-    # cord: lưu các vị trí không đi
-    cord = {}
+    score_sum = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, -1: {}}
+    for key in score_all:
+        for score in score_all[key]:
+            if key in score_sum[score]:
+                score_sum[score][key] += 1
+            else:
+                score_sum[score][key] = 1
 
-    for i in range(BOARD_SIZE):
-        for j in range(BOARD_SIZE):
-            if board[i][j] != " ":
-                taken.append((i, j))
-    """ duyệt trong hướng đi và mảng giá trị trên bàn cờ của người chơi và máy, kiểm tra nước không thể đi(trùng với
-    nước đã có trên bàn cờ)
-    """
-    for direction in directions:
-        dx, dy = direction
-        for coord in taken:
-            x, y = coord
-            for length in [1, 2, 3, 4]:
-                move = march(board, x, y, dx, dy, length)
-                if move not in taken and move not in cord:
-                    cord[move] = False
-    return cord
-
+    return score_sum
 
 def TF34score(score3, score4):
     """
@@ -227,47 +138,7 @@ def TF34score(score3, score4):
     return False
 
 
-def stupid_score(board, col, anticol, x, y):
-    """
-    cố gắng di chuyển x,y
-    trả về điểm số tượng trưng lợi thế
-    """
-
-    global colors
-    M = 1000
-    res, adv, dis = 0, 0, 0
-
-    # tấn công
-    board[x][y] = col
-    # draw_stone(x, y,colors[col])
-    sumcol = score_of_col_one(board, col, x, y)
-    a = winning_situation(sumcol)
-    adv += a*M
-    sum_sumcol_values(sumcol)
-    # {0: 0, 1: 15, 2: 0, 3: 0, 4: 0, 5: 0, -1: 0}
-    adv += sumcol[-1] + sumcol[1] + 4*sumcol[2] + 8*sumcol[3] + 16*sumcol[4]
-
-    # phòng thủ
-    board[x][y] = anticol
-    sumanticol = score_of_col_one(board, anticol, x, y)
-    d = winning_situation(sumanticol)
-    dis += d*(M - 100)
-    sum_sumcol_values(sumanticol)
-    dis += (
-        sumanticol[-1]
-        + sumanticol[1]
-        + 4*sumanticol[2]
-        + 8*sumanticol[3]
-        + 16*sumanticol[4]
-    )
-
-    res = adv + dis
-
-    board[x][y] = " "
-    return res
-
-
-def winning_situation(sumcol):
+def winning_situation(score_sum):
     """
     trả lại tình huống chiến thắng dạng như:
     {0: {}, 1: {(0, 1): 4, (-1, 1): 3, (1, 0): 4, (1, 1): 4}, 2: {}, 3: {}, 4: {}, 5: {}, -1: {}}
@@ -275,163 +146,245 @@ def winning_situation(sumcol):
     -1 là rơi vào trạng thái tồi, cần phòng thủ
     """
 
-    if 1 in sumcol[5].values():
+    # một bên thắng
+    if 1 in score_sum[5].values():
         return 5
-    elif len(sumcol[4]) >= 2 or (len(sumcol[4]) >= 1 and max(sumcol[4].values()) >= 2):
+    elif len(score_sum[4]) >= 2 or (len(score_sum[4]) >= 1 and max(score_sum[4].values()) >= 2):
         return 4
-    elif TF34score(sumcol[3], sumcol[4]):
+    elif TF34score(score_sum[3], score_sum[4]):
         return 4
     else:
-        score3 = sorted(sumcol[3].values(), reverse=True)
+        score3 = sorted(score_sum[3].values(), reverse=True)
         if len(score3) >= 2 and score3[0] >= score3[1] >= 2:
             return 3
     return 0
 
 
-def best_move(board, col):
+def AI_calc_score(x, y):
+    """
+    cố gắng di chuyển x,y
+    trả về điểm số tượng trưng lợi thế
+    """
+    Multiplier = 1000
+    result, attack, defense = 0, 0, 0
+    # attack
+    Board[x][y] = 'w'
+    score_sum = score_of_col_one(x, y, 'w')
+    a = winning_situation(score_sum)
+    attack += a*Multiplier
+    sum_sumcol_values(score_sum)
+    attack += ( 
+        score_sum[-1] 
+        + score_sum[1] 
+        + 4*score_sum[2] 
+        + 8*score_sum[3] 
+        + 16*score_sum[4])
+
+    # phòng thủ
+    Board[x][y] = 'b'
+    score_sum = score_of_col_one(x, y, 'b')
+    d = winning_situation(score_sum)
+    defense += d*(Multiplier - 100)
+    sum_sumcol_values(score_sum)
+    defense += (
+        score_sum[-1]
+        + score_sum[1]
+        + 4*score_sum[2]
+        + 8*score_sum[3]
+        + 16*score_sum[4])
+    
+    result = attack + defense
+    Board[x][y] = ''
+    return result
+
+
+def get_expect_move():
+    """
+    1: Lấy những ô đã đánh
+    2: lấy toạ độ x_min -> x_max, y_min -> y_max của hình chữ nhật bao quanh các ô đã đánh
+    3: trả về các ô có thể đi trong phạm vi rộng hơn 4 ô mỗi chiều của hình chữ nhật đó
+    """
+    global Board
+    # mảng hit lưu những ô đã đánh, cả X và O
+    hit = []
+    x_min, x_max, y_min, y_max = 0, BOARD_SIZE - 1, 0, BOARD_SIZE - 1
+    for i in range(BOARD_SIZE):
+        for j in range(BOARD_SIZE):
+            if Board[i][j] != '':
+                hit.append((i, j))
+                if i < x_min:
+                    x_min = i
+                elif i > x_max:
+                    x_max = i
+                if j < y_min:
+                    y_min = j
+                elif j > y_max:
+                    y_max = j
+    
+    x_min2 = x_min - 4
+    x_max2 = x_max + 4
+    y_min2 = y_min - 4
+    y_max2 = y_max + 4
+    while x_min2 < 0:
+        x_min2 += 1
+    while x_max2 >= BOARD_SIZE:
+        x_max2 -= 1
+    while y_min2 < 0:
+        y_min2 += 1
+    while y_max2 >= BOARD_SIZE:
+        y_max2 -= 1
+    
+    unhit = []
+    for i in range(x_min, x_max + 1):
+        for j in range(y_min, y_max + 1):
+            if Board[i][j] == '':
+                unhit.append((i, j))
+    
+    for x in range(x_min2, x_max2 + 1):
+        for y in range(y_min2, y_max2 + 1):
+            if not (x_min <= x <= x_max and y_min <= y <= y_max):
+                unhit.append((x, y))
+    return unhit
+
+
+def best_move():
     """
     trả lại điểm số của mảng trong lợi thế của từng màu
     """
-    if col == "w":
-        anticol = "b"
-    else:
-        anticol = "w"
-
-    movecol = (0, 0)
-    maxscorecol = ""
-    # kiểm tra nếu bàn cờ rỗng thì cho vị trí random nếu không thì đưa ra giá trị trên bàn cờ nên đi
-    if board == [[" "]*BOARD_SIZE]*BOARD_SIZE:
-        movecol = (
-            int((BOARD_SIZE)*random.random()),
-            int((len(board[0]))*random.random()),
-        )
-    else:
-        moves = possible_moves(board)
-
-        for move in moves:
-            x, y = move
-            if maxscorecol == "":
-                scorecol = stupid_score(board, col, anticol, x, y)
-                maxscorecol = scorecol
-                movecol = move
-            else:
-                scorecol = stupid_score(board, col, anticol, x, y)
-                if scorecol > maxscorecol:
-                    maxscorecol = scorecol
-                    movecol = move
-    return movecol
+    global Board, Number_move
+    move_tmp = (0, 0)
+    best_score = ""
+    
+    expect_move = get_expect_move()
+    for move_tmp in expect_move:
+        x, y = move_tmp
+        if best_score == "":
+            score = AI_calc_score(x, y)
+            best_score = score
+            move = move_tmp
+        else:
+            score = AI_calc_score(x, y)
+            if score > best_score:
+                best_score = score
+                move = move_tmp
+    return move
 
 
-##Graphics Engine
+def is_win():
+    global Win
+    black = score_all('b')
+    white = score_all('w')
+
+    sum_sumcol_values(black)
+    sum_sumcol_values(white)
+
+    if 5 in black and black[5] == 1:
+        Win = 'b'
+        print("Player win")
+        return True
+    elif 5 in white and white[5] == 1:
+        Win = 'w'
+        print("AI win")
+        return True
+    
+    return False
+
+
+# Graphics Engine
 def click(x, y):
-    global board, colors, win, move_history
+    global Win, Number_move, Board, Move_history, Colors
+    print(round(x), round(y))
 
+    if abs(x - round(x)) > 0.4 or abs(y - round(y)) > 0.4 or Win != 0:
+        return
     x, y = round(x), round(y)
 
-    if x == -1 and y == -1 and len(move_history) != 0:
-        x, y = move_history[-1]
-
-        del move_history[-1]
-        board[x][y] = " "
-        x, y = move_history[-1]
-
-        del move_history[-1]
-        board[x][y] = " "
-        return
-
-    if not (0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE):
-        return
-
-    if board[x][y] == " ":
-
-        draw_stone(x, y, colors["b"])
-        board[x][y] = "b"
-
-        move_history.append((x, y))
-
-        game_res = is_win(board)
-        if game_res in ["White won", "Black won", "Draw"]:
-            print(game_res)
-            win = True
+    if Board[x][y] == '':
+        draw_stone(x, y, 'b')
+        Board[x][y] = 'b'
+        Number_move += 1
+        Move_history.append((x, y))
+        if is_win(): # Check if black win
             return
-
-        ax, ay = best_move(board, "w")
-        draw_stone(ax, ay, colors["w"])
-        board[ax][ay] = "w"
-
-        move_history.append((ax, ay))
-
-        game_res = is_win(board)
-        if game_res in ["White won", "Black won", "Draw"]:
-            print(game_res)
-            win = True
+        # AI's turn
+        ax, ay = best_move()
+        draw_stone(ax, ay, 'w')
+        Board[ax][ay] = 'w'
+        Number_move += 1
+        Move_history.append((ax, ay))
+        if is_win(): # Check if white win
             return
 
 
-def initialize(size):
-    global win, board, screen, colors, move_history
+def init():
+    global BOARD_SIZE, WIN, FIRST_HIT, PLAYER_COLOR
+    global Win, Number_move, Board, Move_history, Colors
+    size = BOARD_SIZE
 
-    move_history = []
-    win = False
     # Make empty board
-    board = []
+    Board = []
     for i in range(size):
-        board.append([" "]*size)
+        Board.append(['']*size)
 
     screen = turtle.Screen()
-    screen.onclick(click)
-    screen.setup(screen.screensize()[1]*2, screen.screensize()[1]*2)
-    screen.setworldcoordinates(-1, size, size, -1)
+    screen.title("Caro Game")
     screen.bgcolor("orange")
-    screen.tracer(500)
+    # screen.setup(0.5, 0.75)
+    # print(screen.screensize())
+    # > (400, 300) ???
+    screen.onclick(click)
+    screen.setworldcoordinates(-1, size, size, -1)
+    screen.tracer(5, 0)
 
-    colors = {"w": turtle.Turtle(), "b": turtle.Turtle(), "g": turtle.Turtle()}
-    colors["w"].color("white")
-    colors["b"].color("black")
+    Colors = {'w': turtle.Turtle(), 'b': turtle.Turtle()}
+    if PLAYER_COLOR == 'b':
+        Colors['w'].color("white")
+        Colors['b'].color("black")
+    else:
+        Colors['w'].color("black")
+        Colors['b'].color("white")
+    for key in Colors:
+        Colors[key].ht()
+        Colors[key].penup()
 
-    for key in colors:
-        colors[key].ht()
-        colors[key].penup()
-        colors[key].speed(0)
-
+    # Draw board
     border = turtle.Turtle()
-    border.speed(9)
-    border.penup()
-
-    side = (size - 1) / 2
-
-    i = -1
-    for start in range(size):
-        border.goto(start, side + side*i)
-        border.pendown()
-        i *= -1
-        border.goto(start, side + side*i)
-        border.penup()
-
-    i = 1
-    for start in range(size):
-        border.goto(side + side*i, start)
-        border.pendown()
-        i *= -1
-        border.goto(side + side*i, start)
-        border.penup()
-        border.begin_poly()
-
     border.ht()
+    border.penup()
+    for start in range(size + 1):
+        border.goto(start - 0.5, -0.5)
+        border.pendown()
+        border.goto(start - 0.5, size - 1 + 0.5)
+        border.penup()
 
+    for start in range(size + 1):
+        border.goto(-0.5, start - 0.5)
+        border.pendown()
+        border.goto(size - 0.5, start - 0.5)
+        border.penup()
+    if FIRST_HIT == 1:
+        mid = int(BOARD_SIZE/2) - 1
+        q = int(BOARD_SIZE/4) - 1
+        x, y = (mid + random.randint(-q, q), mid + random.randint(-q, q))
+        draw_stone(x, y, 'w')
+        Board[x][y] = 'w'
+        Number_move += 1
+        Move_history.append((x, y))
+    
     screen.listen()
     screen.mainloop()
 
 
-def draw_stone(x, y, color):
-    color.goto(x, y - 0.3)
-    color.pendown()
-    color.begin_fill()
-    color.circle(0.3)
-    color.end_fill()
-    color.penup()
+def draw_stone(x, y, bw):
+    global Colors
+    Colors[bw].goto(x, y - 0.3)
+    Colors[bw].pendown()
+    Colors[bw].begin_fill()
+    Colors[bw].circle(0.3)
+    Colors[bw].end_fill()
+    Colors[bw].penup()
 
 
 if __name__ == "__main__":
     print("Welcome to Caro game!")
-    initialize(BOARD_SIZE)
+    init()
