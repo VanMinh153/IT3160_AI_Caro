@@ -1,14 +1,15 @@
 import lib.Settings as S
 import lib.Shared_Variable as V
 
+
 # AI Engine
 def forward(x, y, dx, dy, len):
     """
     trả về điểm có toạ độ (x2,y2) = (x,y) + length*(dx,dy) nếu điểm đó nằm trong bàn cờ
     , nếu không thì giảm length
     """
-    x2 = x + len*dx
-    y2 = y + len*dy
+    x2 = x + len * dx
+    y2 = y + len * dy
     while not (0 <= x2 < S.BOARD_SIZE and 0 <= y2 < S.BOARD_SIZE):
         x2 -= dx
         y2 -= dy
@@ -44,9 +45,9 @@ def score_section(begin_point, dx, dy, end_point, bw):
 
     line_score = []
     for i in range(len(line) - (S.WIN - 1)):
-        blank = line[i : i + S.WIN].count('')
-        hit = line[i : i + S.WIN].count(bw)
-        if blank + hit != S.WIN: # opponent has a hit in this line
+        blank = line[i: i + S.WIN].count('')
+        hit = line[i: i + S.WIN].count(bw)
+        if blank + hit != S.WIN:  # opponent has a hit in this line
             score = -1
         else:
             score = hit
@@ -75,7 +76,7 @@ def score_all(bw):
 
     for i in range(S.WIN - 1, S.BOARD_SIZE):
         score[(-1, 1)] += score_section((i, 0), -1, 1, (0, i), bw)
-    
+
     return score_combine(score)
 
 
@@ -86,7 +87,7 @@ def score_point(x, y, bw):
     """
 
     score = {(0, 1): [], (-1, 1): [], (1, 0): [], (1, 1): []}
-    
+
     score[(1, 0)] += score_section(forward(x, y, -1, 0, 4), 1, 0, forward(x, y, 1, 0, 4), bw)
     score[(0, 1)] += score_section(forward(x, y, 0, -1, 4), 0, 1, forward(x, y, 0, 1, 4), bw)
     score[(1, 1)] += score_section(forward(x, y, -1, -1, 4), 1, 1, forward(x, y, 1, 1, 4), bw)
@@ -98,6 +99,7 @@ def score_point(x, y, bw):
 def score_combine(score_all):
     """
     Khởi tạo hệ thống điểm
+    :type score_all: object
     """
     score_sum = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, -1: {}}
     for key in score_all:
@@ -108,6 +110,7 @@ def score_combine(score_all):
                 score_sum[score][key] = 1
 
     return score_sum
+
 
 def TF34score(score3, score4):
     """
@@ -154,28 +157,28 @@ def AI_calc_score(x, y):
     V.Board[x][y] = 'w'
     scores = score_point(x, y, 'w')
     a = win_situation(scores)
-    attack += a*Multiplier
+    attack += a * Multiplier
     get_score_sum(scores)
-    attack += ( 
-        scores[-1] 
-        + scores[1] 
-        + 4*scores[2] 
-        + 8*scores[3] 
-        + 16*scores[4])
+    attack += (
+            scores[-1]
+            + scores[1]
+            + 4 * scores[2]
+            + 8 * scores[3]
+            + 16 * scores[4])
 
     # phòng thủ
     V.Board[x][y] = 'b'
     scores = score_point(x, y, 'b')
     d = win_situation(scores)
-    defense += d*(Multiplier - 100)
+    defense += d * (Multiplier - 100)
     get_score_sum(scores)
     defense += (
-        scores[-1]
-        + scores[1]
-        + 4*scores[2]
-        + 8*scores[3]
-        + 16*scores[4])
-    
+            scores[-1]
+            + scores[1]
+            + 4 * scores[2]
+            + 8 * scores[3]
+            + 16 * scores[4])
+
     result = attack + defense
     V.Board[x][y] = ''
     return result
@@ -202,7 +205,7 @@ def get_expect_move():
                     y_min = j
                 elif j > y_max:
                     y_max = j
-    
+
     x_min2 = x_min - 4
     x_max2 = x_max + 4
     y_min2 = y_min - 4
@@ -215,13 +218,13 @@ def get_expect_move():
         y_min2 += 1
     while y_max2 >= S.BOARD_SIZE:
         y_max2 -= 1
-    
+
     unhit = []
     for i in range(x_min, x_max + 1):
         for j in range(y_min, y_max + 1):
             if V.Board[i][j] == '':
                 unhit.append((i, j))
-    
+
     for x in range(x_min2, x_max2 + 1):
         for y in range(y_min2, y_max2 + 1):
             if not (x_min <= x <= x_max and y_min <= y <= y_max):
@@ -236,7 +239,7 @@ def best_move():
     global move
     move_tmp = (0, 0)
     best_score = ""
-    
+
     expect_move = get_expect_move()
     for move_tmp in expect_move:
         x, y = move_tmp
