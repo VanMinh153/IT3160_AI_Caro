@@ -233,6 +233,7 @@ def best_move():
     """
     trả lại điểm số của mảng trong lợi thế của từng màu
     """
+    global move
     move_tmp = (0, 0)
     best_score = ""
     
