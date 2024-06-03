@@ -14,7 +14,7 @@ def forward(x, y, dx, dy, len):
         x2 -= dx
         y2 -= dy
 
-    return (x2, y2)
+    return x2, y2
 
 
 def get_score_sum(score_dict):
@@ -36,8 +36,7 @@ def score_section(begin_point, dx, dy, end_point, bw):
     x, y = begin_point
     xf, yf = end_point
     # Get line from begin_point to end_point
-    line = []
-    line.append(V.Board[x][y])
+    line = [V.Board[x][y]]
     while x != xf or y != yf:
         x += dx
         y += dy
@@ -96,7 +95,7 @@ def score_point(x, y, bw):
     return score_combine(score)
 
 
-def score_combine(score_all):
+def score_combine(score_all: object):
     """
     Khởi tạo hệ thống điểm
     :type score_all: object
@@ -237,7 +236,7 @@ def best_move():
     trả lại điểm số của mảng trong lợi thế của từng màu
     """
     global move
-    move_tmp = (0, 0)
+    (0, 0)
     best_score = ""
 
     expect_move = get_expect_move()
