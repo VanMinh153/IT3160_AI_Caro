@@ -52,7 +52,7 @@ def display_winner(winner_text):
     winner_turtle = turtle.Turtle()
     winner_turtle.hideturtle()
     winner_turtle.penup()
-    winner_turtle.goto(S.BOARD_SIZE / 2 - 3, -1)
+    winner_turtle.goto(S.BOARD_SIZE / 1.5 - 3, 7)
     winner_turtle.write(winner_text, align="center", font=("Arial", 24, "bold"))
 
 def init():
