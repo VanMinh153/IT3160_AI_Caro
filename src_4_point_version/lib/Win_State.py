@@ -3,12 +3,6 @@ import lib.Shared_Variable as V
 
 _x, _y = 0, 0
 bw = ''
-v1 = []
-v2 = []
-for i in range(1, S.WIN):
-    v1.append(i)
-for i in range(-1, -S.WIN, -1):
-    v2.append(i)
 
 def check_win():
     global _x, _y, bw
@@ -30,7 +24,7 @@ def check_win():
 def check_win_f(dx, dy):
     global _x, _y, bw
     w = 1
-    for i in v1:
+    for i in range(1, S.WIN):
         x, y = _x + i*dx, _y + i*dy
         if x < 0 or y < 0:
             break
@@ -44,7 +38,7 @@ def check_win_f(dx, dy):
     if w == S.WIN:
         return True
     
-    for i in v2:
+    for i in range(-1, -S.WIN, -1):
         x, y = _x + i*dx, _y + i*dy
         if x < 0 or y < 0:
             break
